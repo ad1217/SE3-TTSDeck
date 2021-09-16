@@ -33,6 +33,92 @@ function unload() {
   unregisterAll();
 }
 
+function makeCardJSON(card_id, nickname, description) {
+  return {
+    Name: "Card",
+    Transform: {
+      posX: 0,
+      posY: 0,
+      posZ: 0,
+      rotX: 0,
+      rotY: 0,
+      rotZ: 0,
+      scaleX: 1.0,
+      scaleY: 1.0,
+      scaleZ: 1.0,
+    },
+    Nickname: String(nickname),
+    CardID: card_id,
+    Description: String(description || ""),
+    ColorDiffuse: {
+      r: 0.713235259,
+      g: 0.713235259,
+      b: 0.713235259,
+    },
+    Locked: false,
+    Grid: true,
+    Snap: true,
+    Autoraise: true,
+    Sticky: true,
+    Tooltip: true,
+    SidewaysCard: false,
+  };
+}
+
+function makeDeckJSON(face_url, back_url, num_width, num_height, cards, nickname, description) {
+  const deck_ids = cards.map(function (card) {
+    return card.CardID;
+  });
+  return {
+    Name: "DeckCustom",
+    Transform: {
+      posX: 0,
+      posY: 0,
+      posZ: 0,
+      rotX: 0,
+      rotY: 0.0,
+      rotZ: 0.0,
+      scaleX: 1.0,
+      scaleY: 1.0,
+      scaleZ: 1.0,
+    },
+    Nickname: String(nickname || ""),
+    Description: String(description || ""),
+    ColorDiffuse: {
+      r: 0.713239133,
+      g: 0.713239133,
+      b: 0.713239133,
+    },
+    Grid: true,
+    Locked: false,
+    SidewaysCard: false,
+    DeckIDs: deck_ids,
+    CustomDeck: {
+      "1": {
+        FaceURL: String(face_url),
+        BackURL: String(back_url),
+        NumWidth: num_width,
+        NumHeight: num_height,
+      }
+    },
+    ContainedObjects: cards,
+  };
+}
+
+function makeSavedObjectJSON(objects, save_name) {
+  return {
+    SaveName: String(save_name || ""),
+    GameMode: "",
+    Date: "",
+    Table: "",
+    Sky: "",
+    Note: "",
+    Rules: "",
+    PlayerTurn: "",
+    ObjectStates: objects,
+  };
+}
+
 function run() {
   const ttsDeckAction = JavaAdapter(TaskAction, {
     getLabel: function getLabel() {
@@ -77,16 +163,21 @@ function run() {
       const columns = Math.ceil(Math.sqrt(cards.length));
       const rows = Math.ceil(cards.length / columns);
       let deck_image;
+      let card_jsons = [];
 
       for (let row = 0; row < rows; row++) {
         let row_image;
         for (let col = 0; col < columns && row * columns + col < cards.length; col++) {
-          let card = cards[row * columns + col];
+          let index = row * columns + col;
+          let card = cards[index];
           println("Processing Card ", card);
 
           try {
             let component = ResourceKit.getGameComponentFromFile(card.file);
             let sheets = component.createDefaultSheets();
+
+            card_jsons.push(makeCardJSON(100 + index, component.getName()));
+
             // export front face
             // TODO: handle two-sided cards
             let card_image = sheets[0].paint(arkham.sheet.RenderTarget.EXPORT, RESOLUTION);
@@ -109,8 +200,15 @@ function run() {
         }
       }
 
-      const target_file = new File(member.file, 'tts.png');
-      ImageUtils.write(deck_image, target_file, FORMAT, -1, false, RESOLUTION);
+      const deck_json = makeDeckJSON('TODO', 'TODO', columns, rows, card_jsons);
+      const saved_object = makeSavedObjectJSON([deck_json], member.getName());
+
+      println("Writing output files");
+      const json_file = new File(member.file, member.getName() + '.json');
+      ProjectUtilities.writeTextFile(json_file, JSON.stringify(saved_object, null, 4));
+
+      const image_file = new File(member.file, member.getName() + '.png');
+      ImageUtils.write(deck_image, image_file, FORMAT, -1, false, RESOLUTION);
 
       member.synchronize();
     }
