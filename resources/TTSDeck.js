@@ -33,6 +33,9 @@ function unload() {
   unregisterAll();
 }
 
+// Creates a test button during development that calls unload() to clean up.
+testProjectScript();
+
 function makeCardJSON(card_id, nickname, description) {
   return {
     Name: "Card",
