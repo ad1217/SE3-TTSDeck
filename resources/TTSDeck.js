@@ -8,6 +8,7 @@
 useLibrary('project');
 useLibrary('imageutils');
 useLibrary('uilayout');
+importClass(arkham.project.CopiesList);
 
 // The resolution (in pixels per inch) of the exported images
 const RESOLUTION = 200;
@@ -121,6 +122,18 @@ function makeSavedObjectJSON(objects, save_name) {
   };
 }
 
+// Hack to override the default return value of 1
+function copyCount(copies_list, name) {
+  const entries = copies_list.getListEntries().map(function (x) {
+    return String(x);
+  });
+  if (entries.indexOf(String(name)) == -1) {
+    return 2;
+  } else {
+    return copies_list.getCopyCount(name);
+  }
+}
+
 function run() {
   const ttsDeckAction = JavaAdapter(TaskAction, {
     getLabel: function getLabel() {
@@ -152,6 +165,14 @@ function run() {
       }
     },
     performImpl: function performImpl(member) {
+      let copies_list;
+      try {
+        copies_list = new CopiesList(member);
+      } catch (ex) {
+        copies_list = new CopiesList();
+        alert("unable to read copies list, using card count of 2 for all files", true);
+      }
+
       const children = member.getChildren();
       const cards = children.filter(function (child) {
         if (ProjectUtilities.matchExtension(child, 'eon')) {
@@ -177,8 +198,11 @@ function run() {
           try {
             let component = ResourceKit.getGameComponentFromFile(card.file);
             let sheets = component.createDefaultSheets();
+            let copies = copyCount(copies_list, card.baseName);
 
-            card_jsons.push(makeCardJSON(100 + index, component.getName()));
+            for (let ii = 0; ii < copies; ii++) {
+              card_jsons.push(makeCardJSON(100 + index, component.getName()));
+            }
 
             // export front face
             // TODO: handle two-sided cards
