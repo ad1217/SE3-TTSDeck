@@ -205,7 +205,7 @@ function run() {
       const json_file = new File(member.file, member.getName() + '.json');
       ProjectUtilities.writeTextFile(json_file, JSON.stringify(saved_object, null, 4));
 
-      const image_file = new File(member.file, member.getName() + '.png');
+      const image_file = new File(member.file, member.getName() + '.' + FORMAT);
       ImageUtils.write(deck_image, image_file, FORMAT, -1, false, RESOLUTION);
 
       member.synchronize();
