@@ -166,10 +166,10 @@ function run() {
       const columns = Math.ceil(Math.sqrt(cards.length));
       const rows = Math.ceil(cards.length / columns);
       let deck_image;
+      let deck_graphics;
       let card_jsons = [];
 
       for (let row = 0; row < rows; row++) {
-        let row_image;
         for (let col = 0; col < columns && row * columns + col < cards.length; col++) {
           let index = row * columns + col;
           let card = cards[index];
@@ -185,22 +185,18 @@ function run() {
             // TODO: handle two-sided cards
             let card_image = sheets[0].paint(arkham.sheet.RenderTarget.EXPORT, RESOLUTION);
 
-            if (!row_image) {
-              row_image = card_image;
-            } else {
-              row_image = ImageUtils.stitch(row_image, card_image, ImageUtils.STITCH_HORIZONTAL);
+            if (!deck_image) {
+              deck_image = ImageUtils.create(
+                card_image.width * columns, card_image.height * rows, false);
+              deck_graphics = deck_image.createGraphics();
             }
+
+            deck_graphics.drawImage(card_image, col * card_image.width, row * card_image.height, null);
           } catch (ex) {
             alert('Error while processing ' + card, true);
           }
         }
         println("End of Row ", row);
-        if (!deck_image) {
-          deck_image = row_image;
-        }
-        else {
-          deck_image = ImageUtils.stitch(deck_image, row_image, ImageUtils.STITCH_VERTICAL);
-        }
       }
 
       const deck_json = makeDeckJSON('TODO', 'TODO', columns, rows, card_jsons);
