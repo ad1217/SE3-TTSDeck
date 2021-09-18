@@ -5,7 +5,6 @@
  * in Tabletop Simulator
  */
 
-importClass(java.io.File);
 useLibrary('project');
 useLibrary('imageutils');
 useLibrary('uilayout');
