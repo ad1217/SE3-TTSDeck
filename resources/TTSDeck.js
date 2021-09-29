@@ -50,6 +50,51 @@ function copyCount(copies_list, name) {
   }
 }
 
+function makeTTSDeck(cards, copies_list) {
+  const columns = Math.ceil(Math.sqrt(cards.length));
+  const rows = Math.ceil(cards.length / columns);
+  let deck_image;
+  let deck_graphics;
+  let card_jsons = [];
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < columns && row * columns + col < cards.length; col++) {
+      let index = row * columns + col;
+      let card = cards[index];
+      println("Processing Card ", card);
+
+      try {
+        let component = ResourceKit.getGameComponentFromFile(card.file);
+        let sheets = component.createDefaultSheets();
+        let copies = copyCount(copies_list, card.baseName);
+
+        for (let ii = 0; ii < copies; ii++) {
+          card_jsons.push(TTSJson.makeCardJSON(100 + index, component.getName()));
+        }
+
+        // export front face
+        // TODO: handle two-sided cards
+        let card_image = sheets[0].paint(arkham.sheet.RenderTarget.EXPORT, RESOLUTION);
+
+        if (!deck_image) {
+          deck_image = ImageUtils.create(
+            card_image.width * columns, card_image.height * rows, false);
+          deck_graphics = deck_image.createGraphics();
+        }
+
+        deck_graphics.drawImage(card_image, col * card_image.width, row * card_image.height, null);
+      } catch (ex) {
+        alert('Error while processing ' + card + ': ' + ex, true);
+      }
+    }
+    println("End of Row ", row);
+  }
+
+  const deck_json = TTSJson.makeDeckJSON('TODO', 'TODO', columns, rows, card_jsons);
+
+  return [deck_json, deck_image];
+}
+
 function run() {
   const ttsDeckAction = JavaAdapter(TaskAction, {
     getLabel: function getLabel() {
@@ -99,46 +144,7 @@ function run() {
         }
       });
 
-      const columns = Math.ceil(Math.sqrt(cards.length));
-      const rows = Math.ceil(cards.length / columns);
-      let deck_image;
-      let deck_graphics;
-      let card_jsons = [];
-
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < columns && row * columns + col < cards.length; col++) {
-          let index = row * columns + col;
-          let card = cards[index];
-          println("Processing Card ", card);
-
-          try {
-            let component = ResourceKit.getGameComponentFromFile(card.file);
-            let sheets = component.createDefaultSheets();
-            let copies = copyCount(copies_list, card.baseName);
-
-            for (let ii = 0; ii < copies; ii++) {
-              card_jsons.push(TTSJson.makeCardJSON(100 + index, component.getName()));
-            }
-
-            // export front face
-            // TODO: handle two-sided cards
-            let card_image = sheets[0].paint(arkham.sheet.RenderTarget.EXPORT, RESOLUTION);
-
-            if (!deck_image) {
-              deck_image = ImageUtils.create(
-                card_image.width * columns, card_image.height * rows, false);
-              deck_graphics = deck_image.createGraphics();
-            }
-
-            deck_graphics.drawImage(card_image, col * card_image.width, row * card_image.height, null);
-          } catch (ex) {
-            alert('Error while processing ' + card + ': ' + ex, true);
-          }
-        }
-        println("End of Row ", row);
-      }
-
-      const deck_json = TTSJson.makeDeckJSON('TODO', 'TODO', columns, rows, card_jsons);
+      const [deck_json, deck_image] = makeTTSDeck(cards, copies_list);
       const saved_object = TTSJson.makeSavedObjectJSON([deck_json], member.getName());
 
       println("Writing output files");
