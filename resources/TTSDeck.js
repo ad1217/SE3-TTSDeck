@@ -18,18 +18,10 @@ const RESOLUTION = 200;
 const FORMAT = ImageUtils.FORMAT_JPEG;
 
 
-function getName() {
-	return 'TTSDeck';
-}
-function getDescription() {
-  return 'Generates a TTS deck image and JSON file';
-}
-function getVersion() {
-	return 1.0;
-}
-function getPluginType() {
-	return arkham.plugins.Plugin.INJECTED;
-}
+const getName = () => 'TTSDeck';
+const getDescription = () => 'Generates a TTS deck image and JSON file';
+const getVersion = () => 1.0;
+const getPluginType = () => arkham.plugins.Plugin.INJECTED;
 
 function unload() {
   unregisterAll();
@@ -40,9 +32,7 @@ testProjectScript();
 
 // Hack to override the default return value of 1
 function copyCount(copies_list, name) {
-  const entries = copies_list.getListEntries().map(function (x) {
-    return String(x);
-  });
+  const entries = copies_list.getListEntries().map(x => String(x));
   if (entries.indexOf(String(name)) == -1) {
     return 2;
   } else {
@@ -97,12 +87,8 @@ function makeTTSDeck(cards, copies_list) {
 
 function run() {
   const ttsDeckAction = JavaAdapter(TaskAction, {
-    getLabel: function getLabel() {
-      return 'Generate TTS Deck';
-    },
-    getActionName: function getActionName() {
-      return 'ttsdeck';
-    },
+    getLabel: () => 'Generate TTS Deck',
+    getActionName: () => 'ttsdeck',
     // Applies to Deck Tasks
     appliesTo: function appliesTo(project, task, member) {
         if (member != null || task == null) {
@@ -135,7 +121,7 @@ function run() {
       }
 
       const children = member.getChildren();
-      const cards = children.filter(function (child) {
+      const cards = children.filter(child => {
         if (ProjectUtilities.matchExtension(child, 'eon')) {
           let component = ResourceKit.getGameComponentFromFile(child.file);
           return component.isDeckLayoutSupported();

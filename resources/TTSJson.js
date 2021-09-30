@@ -34,9 +34,7 @@ exports.makeCardJSON = function makeCardJSON(card_id, nickname, description) {
 
 exports.makeDeckJSON = function makeDeckJSON(
   face_url, back_url, num_width, num_height, cards, nickname, description) {
-  const deck_ids = cards.map(function (card) {
-    return card.CardID;
-  });
+  const deck_ids = cards.map(card => card.CardID);
   return {
     Name: "DeckCustom",
     Transform: {
