@@ -7,6 +7,7 @@
 
 useLibrary('project');
 useLibrary('imageutils');
+useLibrary('threads');
 useLibrary('uilayout');
 importClass(arkham.project.CopiesList);
 
@@ -66,7 +67,7 @@ function makeCardImage(card) {
   }
 }
 
-function TTSDeckPage(page_num, page_cards, copies_list) {
+function TTSDeckPage(busy_props, page_num, page_cards, copies_list) {
   this.rows = Math.min(Math.ceil(Math.sqrt(page_cards.length)), TTS_MAX_ROWS);
   this.columns = Math.ceil(page_cards.length / this.rows);
   this.deck_image = null;
@@ -75,9 +76,11 @@ function TTSDeckPage(page_num, page_cards, copies_list) {
   this.card_jsons = [];
   for (let row = 0; row < this.rows; row++) {
     for (let col = 0; col < this.columns && row * this.columns + col < page_cards.length; col++) {
+      if (busy_props.cancelled) return;
       let index = row * this.columns + col;
       let card = page_cards[index];
-      println("Processing Card ", card);
+      busy_props.status = "Processing Card " + card;
+      busy_props.currentProgress = (page_num - 1) * TTS_CARDS_PER_IMAGE + index;
 
       try {
         let component = ResourceKit.getGameComponentFromFile(card.file);
@@ -108,13 +111,17 @@ function TTSDeckPage(page_num, page_cards, copies_list) {
   this.back_url = "TODO";
 }
 
-function makeTTSDeck(cards, copies_list) {
+function makeTTSDeck(busy_props, cards, copies_list) {
   const pages = [];
+
+  busy_props.title = "Processing Cards";
+  busy_props.maximumProgress = cards.length;
 
   for (let page_num = 0; page_num * TTS_CARDS_PER_IMAGE < cards.length; page_num++) {
     let page_cards = cards.slice(page_num * TTS_CARDS_PER_IMAGE, (page_num + 1) * TTS_CARDS_PER_IMAGE);
     printf("Making page %d, with %d cards:\n", page_num + 1, page_cards.length);
-    pages.push(new TTSDeckPage(page_num + 1, page_cards, copies_list));
+    pages.push(new TTSDeckPage(busy_props, page_num + 1, page_cards, copies_list));
+    if (busy_props.cancelled) return [,];
   }
 
   const deck_json = TTSJson.makeDeckJSON(pages);
@@ -141,14 +148,17 @@ function run() {
       member = ProjectUtilities.simplify(project, task, member);
       Eons.setWaitCursor(true);
       try {
-        this.performImpl(member);
+        Thread.busyWindow(
+          (busy_props) => this.performImpl(busy_props, member),
+          'Setting up...',
+          true);
       } catch (ex) {
         Error.handleUncaught(ex);
       } finally {
         Eons.setWaitCursor(false);
       }
     },
-    performImpl: function performImpl(member) {
+    performImpl: function performImpl(busy_props, member) {
       let copies_list;
       try {
         copies_list = new CopiesList(member);
@@ -167,15 +177,20 @@ function run() {
         }
       });
 
-      const [deck_json, deck_images] = makeTTSDeck(page_cards, copies_list);
+      const [deck_json, deck_images] = makeTTSDeck(busy_props, page_cards, copies_list);
+      if (busy_props.cancelled) return;
       const saved_object = TTSJson.makeSavedObjectJSON([deck_json], member.getName());
 
-      println("Writing deck JSON");
+      busy_props.status = "";
+      busy_props.maximumProgress = -1;
+      busy_props.title = "Writing JSON";
       const json_file = new File(member.file, member.getName() + '.json');
       ProjectUtilities.writeTextFile(json_file, JSON.stringify(saved_object, null, 4));
 
+      busy_props.title = "Writing Images";
+      busy_props.maximumProgress = deck_images.length;
       deck_images.forEach((deck_image, index) => {
-        printf("Writing image %d/%d\n", index + 1, deck_images.length);
+        busy_props.currentProgress = index;
         const image_file = new File(member.file, member.getName() + '_' + (index + 1) + '.' + FORMAT);
         ImageUtils.write(deck_image, image_file, FORMAT, -1, false, RESOLUTION);
       });
