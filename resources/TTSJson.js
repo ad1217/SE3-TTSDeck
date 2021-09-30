@@ -65,6 +65,7 @@ exports.makeDeckJSON = function makeDeckJSON(pages, nickname, description) {
         BackURL: String(page.back_url),
         NumWidth: page.columns,
         NumHeight: page.rows,
+        BackIsHidden: true,
       };
       return acc;
     }, {}),
