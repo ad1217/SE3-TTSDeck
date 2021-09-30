@@ -32,9 +32,7 @@ exports.makeCardJSON = function makeCardJSON(card_id, nickname, description) {
   };
 };
 
-exports.makeDeckJSON = function makeDeckJSON(
-  face_url, back_url, num_width, num_height, cards, nickname, description) {
-  const deck_ids = cards.map(card => card.CardID);
+exports.makeDeckJSON = function makeDeckJSON(pages, nickname, description) {
   return {
     Name: "DeckCustom",
     Transform: {
@@ -58,16 +56,21 @@ exports.makeDeckJSON = function makeDeckJSON(
     Grid: true,
     Locked: false,
     SidewaysCard: false,
-    DeckIDs: deck_ids,
-    CustomDeck: {
-      "1": {
-        FaceURL: String(face_url),
-        BackURL: String(back_url),
-        NumWidth: num_width,
-        NumHeight: num_height,
-      }
-    },
-    ContainedObjects: cards,
+    DeckIDs: pages
+      .map(page => page.card_jsons.map(card => card.CardID))
+      .reduce((acc, val) => acc.concat(val), []),
+    CustomDeck: pages.reduce((acc, page, index) => {
+      acc[String(index + 1)] = {
+        FaceURL: String(page.face_url),
+        BackURL: String(page.back_url),
+        NumWidth: page.columns,
+        NumHeight: page.rows,
+      };
+      return acc;
+    }, {}),
+    ContainedObjects: pages
+      .map(page => page.card_jsons)
+      .reduce((acc, val) => acc.concat(val), []),
   };
 };
 

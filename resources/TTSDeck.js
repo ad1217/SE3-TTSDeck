@@ -17,6 +17,9 @@ const RESOLUTION = 200;
 // The extension of the image file format to use, e.g., png, jpg
 const FORMAT = ImageUtils.FORMAT_JPEG;
 
+const TTS_CARDS_PER_IMAGE = 69;
+const TTS_MAX_ROWS = 7;
+
 
 const getName = () => 'TTSDeck';
 const getDescription = () => 'Generates a TTS deck image and JSON file';
@@ -63,17 +66,17 @@ function makeCardImage(card) {
   }
 }
 
-function makeTTSDeck(cards, copies_list) {
-  const columns = Math.ceil(Math.sqrt(cards.length));
-  const rows = Math.ceil(cards.length / columns);
-  let deck_image;
+function TTSDeckPage(page_num, page_cards, copies_list) {
+  this.rows = Math.min(Math.ceil(Math.sqrt(page_cards.length)), TTS_MAX_ROWS);
+  this.columns = Math.ceil(page_cards.length / this.rows);
+  this.deck_image = null;
   let deck_graphics;
-  let card_jsons = [];
 
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < columns && row * columns + col < cards.length; col++) {
-      let index = row * columns + col;
-      let card = cards[index];
+  this.card_jsons = [];
+  for (let row = 0; row < this.rows; row++) {
+    for (let col = 0; col < this.columns && row * this.columns + col < page_cards.length; col++) {
+      let index = row * this.columns + col;
+      let card = page_cards[index];
       println("Processing Card ", card);
 
       try {
@@ -81,15 +84,15 @@ function makeTTSDeck(cards, copies_list) {
         let copies = copyCount(copies_list, card.baseName);
 
         for (let ii = 0; ii < copies; ii++) {
-          card_jsons.push(TTSJson.makeCardJSON(100 + index, component.getName()));
+          this.card_jsons.push(TTSJson.makeCardJSON(page_num * 100 + index, component.getName()));
         }
 
         let card_image = makeCardImage(card);
 
-        if (!deck_image) {
-          deck_image = ImageUtils.create(
-            card_image.width * columns, card_image.height * rows, false);
-          deck_graphics = deck_image.createGraphics();
+        if (!this.deck_image) {
+          this.deck_image = ImageUtils.create(
+            card_image.width * this.columns, card_image.height * this.rows, false);
+          deck_graphics = this.deck_image.createGraphics();
         }
 
         deck_graphics.drawImage(card_image, col * card_image.width, row * card_image.height, null);
@@ -100,9 +103,23 @@ function makeTTSDeck(cards, copies_list) {
     println("End of Row ", row);
   }
 
-  const deck_json = TTSJson.makeDeckJSON('TODO', 'TODO', columns, rows, card_jsons);
+  // TODO
+  this.face_url = "TODO";
+  this.back_url = "TODO";
+}
 
-  return [deck_json, deck_image];
+function makeTTSDeck(cards, copies_list) {
+  const pages = [];
+
+  for (let page_num = 0; page_num * TTS_CARDS_PER_IMAGE < cards.length; page_num++) {
+    let page_cards = cards.slice(page_num * TTS_CARDS_PER_IMAGE, (page_num + 1) * TTS_CARDS_PER_IMAGE);
+    printf("Making page %d, with %d cards:\n", page_num + 1, page_cards.length);
+    pages.push(new TTSDeckPage(page_num + 1, page_cards, copies_list));
+  }
+
+  const deck_json = TTSJson.makeDeckJSON(pages);
+
+  return [deck_json, pages.map(page => page.deck_image)];
 }
 
 function run() {
@@ -141,7 +158,7 @@ function run() {
       }
 
       const children = member.getChildren();
-      const cards = children.filter(child => {
+      const page_cards = children.filter(child => {
         if (ProjectUtilities.matchExtension(child, 'eon')) {
           let component = ResourceKit.getGameComponentFromFile(child.file);
           return component.isDeckLayoutSupported();
@@ -150,15 +167,18 @@ function run() {
         }
       });
 
-      const [deck_json, deck_image] = makeTTSDeck(cards, copies_list);
+      const [deck_json, deck_images] = makeTTSDeck(page_cards, copies_list);
       const saved_object = TTSJson.makeSavedObjectJSON([deck_json], member.getName());
 
-      println("Writing output files");
+      println("Writing deck JSON");
       const json_file = new File(member.file, member.getName() + '.json');
       ProjectUtilities.writeTextFile(json_file, JSON.stringify(saved_object, null, 4));
 
-      const image_file = new File(member.file, member.getName() + '.' + FORMAT);
-      ImageUtils.write(deck_image, image_file, FORMAT, -1, false, RESOLUTION);
+      deck_images.forEach((deck_image, index) => {
+        printf("Writing image %d/%d\n", index + 1, deck_images.length);
+        const image_file = new File(member.file, member.getName() + '_' + (index + 1) + '.' + FORMAT);
+        ImageUtils.write(deck_image, image_file, FORMAT, -1, false, RESOLUTION);
+      });
 
       member.synchronize();
     }
