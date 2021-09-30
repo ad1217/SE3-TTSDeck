@@ -106,8 +106,9 @@ function TTSDeckPage(busy_props, page_num, page_cards, copies_list) {
     println("End of Row ", row);
   }
 
-  // TODO
-  this.face_url = "TODO";
+  // TODO: this should either prompt the user or provde automatic uploading somewhere
+  this.face_url = String((new File(page_cards[0].parent.file,
+                                   page_cards[0].parent.getName() + '_' + page_num + '.' + FORMAT)).toPath().toUri());
   this.back_url = "TODO";
 }
 
