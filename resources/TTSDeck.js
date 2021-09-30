@@ -40,6 +40,29 @@ function copyCount(copies_list, name) {
   }
 }
 
+// export front face, or retrive it from a cached file
+// TODO: handle two-sided cards
+function makeCardImage(card) {
+  const component = ResourceKit.getGameComponentFromFile(card.file);
+
+  const cache_dir = new File(card.parent.file, '.ttsdeck_cache');
+  const cached_file = new File(cache_dir, card.file.name + '.' + FORMAT);
+
+  if (cached_file.exists() && cached_file.lastModified() > card.file.lastModified()) {
+    println("Got cached image for card", card);
+    return ImageUtils.read(cached_file);
+  } else {
+    println("Generating image for card ", card);
+    const sheets = component.createDefaultSheets();
+    const card_image = sheets[0].paint(arkham.sheet.RenderTarget.EXPORT, RESOLUTION);
+
+    cache_dir.mkdir();
+    ImageUtils.write(card_image, cached_file, FORMAT, -1, false, RESOLUTION);
+
+    return card_image;
+  }
+}
+
 function makeTTSDeck(cards, copies_list) {
   const columns = Math.ceil(Math.sqrt(cards.length));
   const rows = Math.ceil(cards.length / columns);
@@ -55,16 +78,13 @@ function makeTTSDeck(cards, copies_list) {
 
       try {
         let component = ResourceKit.getGameComponentFromFile(card.file);
-        let sheets = component.createDefaultSheets();
         let copies = copyCount(copies_list, card.baseName);
 
         for (let ii = 0; ii < copies; ii++) {
           card_jsons.push(TTSJson.makeCardJSON(100 + index, component.getName()));
         }
 
-        // export front face
-        // TODO: handle two-sided cards
-        let card_image = sheets[0].paint(arkham.sheet.RenderTarget.EXPORT, RESOLUTION);
+        let card_image = makeCardImage(card);
 
         if (!deck_image) {
           deck_image = ImageUtils.create(
