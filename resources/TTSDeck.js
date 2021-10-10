@@ -100,7 +100,7 @@ function TTSDeckPage(busy_props, page_num, page_cards, copies_list) {
 
         deck_graphics.drawImage(card_image, col * card_image.width, row * card_image.height, null);
       } catch (ex) {
-        alert('Error while processing ' + card + ': ' + ex, true);
+        Thread.invokeLater(() => alert('Error while processing ' + card + ': ' + ex, true));
       }
     }
     println("End of Row ", row);
