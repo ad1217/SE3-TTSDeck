@@ -41,11 +41,23 @@ function copyCount(copies_list, name) {
   }
 }
 
+function getImageFile(parent, image_format, page_num) {
+  return new File(parent.file, parent.getName() + '_' + page_num + '.' + image_format);
+}
+
+function makeCardImageUncached(card, resolution, back) {
+  const component = ResourceKit.getGameComponentFromFile(card.file);
+
+  println("Generating image for card ", card);
+    const sheets = component.createDefaultSheets();
+    const card_image = sheets[back ? 1 : 0].paint(arkham.sheet.RenderTarget.EXPORT, resolution);
+
+    return card_image;
+}
+
 // export front face, or retrive it from a cached file
 // TODO: handle two-sided cards
 function makeCardImage(card, format, resolution) {
-  const component = ResourceKit.getGameComponentFromFile(card.file);
-
   const cache_dir = new File(card.parent.file, '.ttsdeck_cache');
   const cached_file = new File(cache_dir, card.file.name + '.' + format);
 
@@ -53,9 +65,7 @@ function makeCardImage(card, format, resolution) {
     println("Got cached image for card", card);
     return ImageUtils.read(cached_file);
   } else {
-    println("Generating image for card ", card);
-    const sheets = component.createDefaultSheets();
-    const card_image = sheets[0].paint(arkham.sheet.RenderTarget.EXPORT, resolution);
+    const card_image = makeCardImageUncached(card, resolution);
 
     cache_dir.mkdir();
     ImageUtils.write(card_image, cached_file, format, -1, false, resolution);
@@ -103,10 +113,8 @@ function TTSDeckPage(busy_props, image_format, image_resolution, page_num, page_
     println("End of Row ", row);
   }
 
-  // TODO: this should either prompt the user or provde automatic uploading somewhere
-  this.face_url = String((new File(page_cards[0].parent.file,
-                                   page_cards[0].parent.getName() + '_' + page_num + '.' + image_format)).toPath().toUri());
-  this.back_url = "TODO";
+  this.face_url = String(getImageFile(page_cards[0].parent, image_format, page_num).toPath().toUri());
+  this.back_url = String(getImageFile(page_cards[0].parent, image_format, "back").toPath().toUri());
 }
 
 function makeTTSDeck(busy_props, image_format, image_resolution, cards, copies_list) {
@@ -228,9 +236,13 @@ function run() {
       busy_props.maximumProgress = deck_images.length;
       deck_images.forEach((deck_image, index) => {
         busy_props.currentProgress = index;
-        const image_file = new File(member.file, member.getName() + '_' + (index + 1) + '.' + image_format);
+        const image_file = getImageFile(member, image_format, index + 1);
         ImageUtils.write(deck_image, image_file, image_format, -1, false, image_resolution);
       });
+
+      let back_image = makeCardImageUncached(page_cards[0], image_resolution, true);
+      const back_image_file = getImageFile(member, image_format, "back");
+      ImageUtils.write(back_image, back_image_file, image_format, -1, false, image_resolution);
 
       member.synchronize();
     }
