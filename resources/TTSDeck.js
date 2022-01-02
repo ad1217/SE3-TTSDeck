@@ -30,11 +30,12 @@ function unload() {
 // Creates a test button during development that calls unload() to clean up.
 testProjectScript();
 
+// TODO: allow setting a default copy count
 // Hack to override the default return value of 1
 function copyCount(copies_list, name) {
   const entries = copies_list.getListEntries().map(x => String(x));
   if (entries.indexOf(String(name)) == -1) {
-    return 2;
+    return 1;
   } else {
     return copies_list.getCopyCount(name);
   }
