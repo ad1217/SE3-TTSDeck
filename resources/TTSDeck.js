@@ -9,14 +9,10 @@ useLibrary('project');
 useLibrary('imageutils');
 useLibrary('threads');
 useLibrary('uilayout');
+useLibrary('uicontrols');
 importClass(arkham.project.CopiesList);
 
 const TTSJson = require('./TTSJson.js');
-
-// The resolution (in pixels per inch) of the exported images
-const RESOLUTION = 200;
-// The extension of the image file format to use, e.g., png, jpg
-const FORMAT = ImageUtils.FORMAT_JPEG;
 
 const TTS_CARDS_PER_IMAGE = 69;
 const TTS_MAX_ROWS = 7;
@@ -46,11 +42,11 @@ function copyCount(copies_list, name) {
 
 // export front face, or retrive it from a cached file
 // TODO: handle two-sided cards
-function makeCardImage(card) {
+function makeCardImage(card, format, resolution) {
   const component = ResourceKit.getGameComponentFromFile(card.file);
 
   const cache_dir = new File(card.parent.file, '.ttsdeck_cache');
-  const cached_file = new File(cache_dir, card.file.name + '.' + FORMAT);
+  const cached_file = new File(cache_dir, card.file.name + '.' + format);
 
   if (cached_file.exists() && cached_file.lastModified() > card.file.lastModified()) {
     println("Got cached image for card", card);
@@ -58,16 +54,16 @@ function makeCardImage(card) {
   } else {
     println("Generating image for card ", card);
     const sheets = component.createDefaultSheets();
-    const card_image = sheets[0].paint(arkham.sheet.RenderTarget.EXPORT, RESOLUTION);
+    const card_image = sheets[0].paint(arkham.sheet.RenderTarget.EXPORT, resolution);
 
     cache_dir.mkdir();
-    ImageUtils.write(card_image, cached_file, FORMAT, -1, false, RESOLUTION);
+    ImageUtils.write(card_image, cached_file, format, -1, false, resolution);
 
     return card_image;
   }
 }
 
-function TTSDeckPage(busy_props, page_num, page_cards, copies_list) {
+function TTSDeckPage(busy_props, image_format, image_resolution, page_num, page_cards, copies_list) {
   this.rows = Math.min(Math.ceil(Math.sqrt(page_cards.length)), TTS_MAX_ROWS);
   this.columns = Math.ceil(page_cards.length / this.rows);
   this.deck_image = null;
@@ -90,7 +86,7 @@ function TTSDeckPage(busy_props, page_num, page_cards, copies_list) {
           this.card_jsons.push(TTSJson.makeCardJSON(page_num * 100 + index, component.getName()));
         }
 
-        let card_image = makeCardImage(card);
+        let card_image = makeCardImage(card, image_format, image_resolution);
 
         if (!this.deck_image) {
           this.deck_image = ImageUtils.create(
@@ -108,11 +104,11 @@ function TTSDeckPage(busy_props, page_num, page_cards, copies_list) {
 
   // TODO: this should either prompt the user or provde automatic uploading somewhere
   this.face_url = String((new File(page_cards[0].parent.file,
-                                   page_cards[0].parent.getName() + '_' + page_num + '.' + FORMAT)).toPath().toUri());
+                                   page_cards[0].parent.getName() + '_' + page_num + '.' + image_format)).toPath().toUri());
   this.back_url = "TODO";
 }
 
-function makeTTSDeck(busy_props, cards, copies_list) {
+function makeTTSDeck(busy_props, image_format, image_resolution, cards, copies_list) {
   const pages = [];
 
   busy_props.title = "Processing Cards";
@@ -121,13 +117,34 @@ function makeTTSDeck(busy_props, cards, copies_list) {
   for (let page_num = 0; page_num * TTS_CARDS_PER_IMAGE < cards.length; page_num++) {
     let page_cards = cards.slice(page_num * TTS_CARDS_PER_IMAGE, (page_num + 1) * TTS_CARDS_PER_IMAGE);
     printf("Making page %d, with %d cards:\n", page_num + 1, page_cards.length);
-    pages.push(new TTSDeckPage(busy_props, page_num + 1, page_cards, copies_list));
+    pages.push(new TTSDeckPage(busy_props, image_format, image_resolution, page_num + 1, page_cards, copies_list));
     if (busy_props.cancelled) return [,];
   }
 
   const deck_json = TTSJson.makeDeckJSON(pages);
 
   return [deck_json, pages.map(page => page.deck_image)];
+}
+
+function settingsDialog(task_settings) {
+  const image_format_field = comboBox([
+    ImageUtils.FORMAT_JPEG,
+    ImageUtils.FORMAT_PNG
+  ]);
+  image_format_field.setSelectedItem(task_settings.get("tts_image_format", "jpg"));
+  const resolution_field = textField(task_settings.get("tts_image_resolution", "200"), 15);
+
+  // TODO: Clear cache button
+
+  const panel = new Grid();
+  panel.place(
+    "Image Format", "",
+    image_format_field, "grow,span",
+    "Resolution", "",
+    resolution_field, "grow,span"
+  );
+  const close_button = panel.createDialog('TTS Export').showDialog();
+  return [close_button, image_format_field.getSelectedItem(), Number(resolution_field.text)];
 }
 
 function run() {
@@ -146,11 +163,23 @@ function run() {
         return false;
     },
     perform: function perform(project, task, member) {
-      member = ProjectUtilities.simplify(project, task, member);
+      let deck_task = ProjectUtilities.simplify(project, task, member);
+      const task_settings = deck_task.getSettings();
+      const [close_button, image_format, image_resolution] = settingsDialog(task_settings);
+
+      // User canceled the dialog or closed it without pressing ok
+      if (close_button != 1) {
+        return;
+      }
+      // persist settings
+      task_settings.set("tts_image_format", image_format);
+      task_settings.set("tts_image_resolution", image_resolution);
+      deck_task.writeTaskSettings();
+
       Eons.setWaitCursor(true);
       try {
         Thread.busyWindow(
-          (busy_props) => this.performImpl(busy_props, member),
+          (busy_props) => this.performImpl(busy_props, image_format, image_resolution, deck_task),
           'Setting up...',
           true);
       } catch (ex) {
@@ -159,7 +188,7 @@ function run() {
         Eons.setWaitCursor(false);
       }
     },
-    performImpl: function performImpl(busy_props, member) {
+    performImpl: function performImpl(busy_props, image_format, image_resolution, member) {
       let copies_list;
       try {
         copies_list = new CopiesList(member);
@@ -178,7 +207,7 @@ function run() {
         }
       });
 
-      const [deck_json, deck_images] = makeTTSDeck(busy_props, page_cards, copies_list);
+      const [deck_json, deck_images] = makeTTSDeck(busy_props, image_format, image_resolution, page_cards, copies_list);
       if (busy_props.cancelled) return;
       const saved_object = TTSJson.makeSavedObjectJSON([deck_json], member.getName());
 
@@ -192,8 +221,8 @@ function run() {
       busy_props.maximumProgress = deck_images.length;
       deck_images.forEach((deck_image, index) => {
         busy_props.currentProgress = index;
-        const image_file = new File(member.file, member.getName() + '_' + (index + 1) + '.' + FORMAT);
-        ImageUtils.write(deck_image, image_file, FORMAT, -1, false, RESOLUTION);
+        const image_file = new File(member.file, member.getName() + '_' + (index + 1) + '.' + image_format);
+        ImageUtils.write(deck_image, image_file, image_format, -1, false, image_resolution);
       });
 
       member.synchronize();
