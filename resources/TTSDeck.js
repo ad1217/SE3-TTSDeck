@@ -126,7 +126,9 @@ function makeTTSDeck(busy_props, image_format, image_resolution, cards, copies_l
   return [deck_json, pages.map(page => page.deck_image)];
 }
 
-function settingsDialog(task_settings) {
+function settingsDialog(deck_task) {
+  const task_settings = deck_task.getSettings();
+
   const image_format_field = comboBox([
     ImageUtils.FORMAT_JPEG,
     ImageUtils.FORMAT_PNG
@@ -134,14 +136,18 @@ function settingsDialog(task_settings) {
   image_format_field.setSelectedItem(task_settings.get("tts_image_format", "jpg"));
   const resolution_field = textField(task_settings.get("tts_image_resolution", "200"), 15);
 
-  // TODO: Clear cache button
+  const clear_cache_button = button("Clear Cache", undefined, function (e) {
+    const cache_dir = new File(deck_task.file, '.ttsdeck_cache');
+    cache_dir.listFiles().forEach((file) => file.delete());
+  });
 
   const panel = new Grid();
   panel.place(
     "Image Format", "",
     image_format_field, "grow,span",
     "Resolution", "",
-    resolution_field, "grow,span"
+    resolution_field, "grow,span",
+    clear_cache_button, "grow,span"
   );
   const close_button = panel.createDialog('TTS Export').showDialog();
   return [close_button, image_format_field.getSelectedItem(), Number(resolution_field.text)];
@@ -164,14 +170,14 @@ function run() {
     },
     perform: function perform(project, task, member) {
       let deck_task = ProjectUtilities.simplify(project, task, member);
-      const task_settings = deck_task.getSettings();
-      const [close_button, image_format, image_resolution] = settingsDialog(task_settings);
+      const [close_button, image_format, image_resolution] = settingsDialog(deck_task);
 
       // User canceled the dialog or closed it without pressing ok
       if (close_button != 1) {
         return;
       }
       // persist settings
+      const task_settings = deck_task.getSettings();
       task_settings.set("tts_image_format", image_format);
       task_settings.set("tts_image_resolution", image_resolution);
       deck_task.writeTaskSettings();
