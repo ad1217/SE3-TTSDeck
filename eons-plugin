@@ -2,6 +2,12 @@
 # TTSDeck Root File
 #
 
-id = CATALOGUEID{b601af40-5e79-4dd3-b920-0d8b215b7d77:2021-8-16-20-36-2-56}
+id = CATALOGUEID{b601af40-5e79-4dd3-b920-0d8b215b7d77:2022-0-2-3-29-51-956}
+
+catalog-name = Tabletop Simulator Deck Generator
+catalog-credit = Adam Goldsmith <contact@adamgoldsmith.name>
+catalog-homepage = https://github.com/ad1217/SE3-TTSDeck
+catalog-description = This plugin for allows you to generate images and \
+    corresponding "Saved Object" JSONs for decks which can be used in Tabletop Simulator.
 
 res://TTSDeck.js
