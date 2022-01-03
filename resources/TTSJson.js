@@ -57,7 +57,7 @@ exports.makeDeckJSON = function makeDeckJSON(pages, nickname, description) {
     Locked: false,
     SidewaysCard: false,
     DeckIDs: pages
-      .map(page => page.card_jsons.map(card => card.CardID))
+      .map((page) => page.card_jsons.map((card) => card.CardID))
       .reduce((acc, val) => acc.concat(val), []),
     CustomDeck: pages.reduce((acc, page, index) => {
       acc[String(index + 1)] = {
@@ -70,7 +70,7 @@ exports.makeDeckJSON = function makeDeckJSON(pages, nickname, description) {
       return acc;
     }, {}),
     ContainedObjects: pages
-      .map(page => page.card_jsons)
+      .map((page) => page.card_jsons)
       .reduce((acc, val) => acc.concat(val), []),
   };
 };
