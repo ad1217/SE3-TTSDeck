@@ -41,38 +41,43 @@ function copyCount(copies_list, name) {
   }
 }
 
-function getImageFile(parent, image_format, page_num) {
-  return new File(parent.file, parent.getName() + '_' + page_num + '.' + image_format);
-}
+function getImageFile(parent, format, page_num) {
+  return new File(parent.file, parent.getName() + '_' + page_num + '.' + format);
+};
 
-function makeCardImageUncached(card, resolution, back) {
-  const component = ResourceKit.getGameComponentFromFile(card.file);
 
-  println("Generating image for card ", card);
-    const sheets = component.createDefaultSheets();
+function Card(member) {
+  this.member = member;
+  this.component = ResourceKit.getGameComponentFromFile(member.file);
+
+  this.makeImageUncached = function makeImageUncached(resolution, back) {
+    println("Generating image for card ", this.member);
+    const sheets = this.component.createDefaultSheets();
     const card_image = sheets[back ? 1 : 0].paint(arkham.sheet.RenderTarget.EXPORT, resolution);
 
     return card_image;
+  };
+
+  // export front face, or retrive it from a cached file
+  // TODO: handle two-sided cards
+  this.makeImage = function makeImage(format, resolution) {
+    const cache_dir = new File(this.member.parent.file, '.ttsdeck_cache');
+    const cached_file = new File(cache_dir, this.member.file.name + '.' + format);
+
+    if (cached_file.exists() && cached_file.lastModified() > this.member.file.lastModified()) {
+      println("Got cached image for card", this.member);
+      return ImageUtils.read(cached_file);
+    } else {
+      const card_image = this.makeImageUncached(resolution);
+
+      cache_dir.mkdir();
+      ImageUtils.write(card_image, cached_file, format, -1, false, resolution);
+
+      return card_image;
+    }
+  };
 }
 
-// export front face, or retrive it from a cached file
-// TODO: handle two-sided cards
-function makeCardImage(card, format, resolution) {
-  const cache_dir = new File(card.parent.file, '.ttsdeck_cache');
-  const cached_file = new File(cache_dir, card.file.name + '.' + format);
-
-  if (cached_file.exists() && cached_file.lastModified() > card.file.lastModified()) {
-    println("Got cached image for card", card);
-    return ImageUtils.read(cached_file);
-  } else {
-    const card_image = makeCardImageUncached(card, resolution);
-
-    cache_dir.mkdir();
-    ImageUtils.write(card_image, cached_file, format, -1, false, resolution);
-
-    return card_image;
-  }
-}
 
 function TTSDeckPage(busy_props, image_format, image_resolution, page_num, page_cards, copies_list) {
   this.rows = Math.min(Math.ceil(Math.sqrt(page_cards.length)), TTS_MAX_ROWS);
@@ -86,18 +91,17 @@ function TTSDeckPage(busy_props, image_format, image_resolution, page_num, page_
       if (busy_props.cancelled) return;
       let index = row * this.columns + col;
       let card = page_cards[index];
-      busy_props.status = "Processing Card " + card;
+      busy_props.status = "Processing Card " + card.member;
       busy_props.currentProgress = (page_num - 1) * TTS_CARDS_PER_IMAGE + index;
 
       try {
-        let component = ResourceKit.getGameComponentFromFile(card.file);
         let copies = copyCount(copies_list, card.baseName);
 
         for (let ii = 0; ii < copies; ii++) {
-          this.card_jsons.push(TTSJson.makeCardJSON(page_num * 100 + index, component.getName()));
+          this.card_jsons.push(TTSJson.makeCardJSON(page_num * 100 + index, card.component.getName()));
         }
 
-        let card_image = makeCardImage(card, image_format, image_resolution);
+        let card_image = card.makeImage(image_format, image_resolution);
 
         if (!this.deck_image) {
           this.deck_image = ImageUtils.create(
@@ -113,8 +117,8 @@ function TTSDeckPage(busy_props, image_format, image_resolution, page_num, page_
     println("End of Row ", row);
   }
 
-  this.face_url = String(getImageFile(page_cards[0].parent, image_format, page_num).toPath().toUri());
-  this.back_url = String(getImageFile(page_cards[0].parent, image_format, "back").toPath().toUri());
+  this.face_url = String(getImageFile(page_cards[0].member.parent, image_format, page_num).toPath().toUri());
+  this.back_url = String(getImageFile(page_cards[0].member.parent, image_format, "back").toPath().toUri());
 }
 
 function makeTTSDeck(busy_props, image_format, image_resolution, cards, copies_list) {
@@ -213,16 +217,19 @@ function run() {
       }
 
       const children = member.getChildren();
-      const page_cards = children.filter(child => {
-        if (ProjectUtilities.matchExtension(child, 'eon')) {
-          let component = ResourceKit.getGameComponentFromFile(child.file);
-          return component.isDeckLayoutSupported();
-        } else {
-          return false;
-        }
-      });
+      const cards = children
+        .map(child => {
+          if (ProjectUtilities.matchExtension(child, 'eon')) {
+            let card = new Card(child);
+            if (card.component.isDeckLayoutSupported()) {
+              return card;
+            }
+          }
+          return undefined;
+        })
+        .filter(card => card !== undefined);
 
-      const [deck_json, deck_images] = makeTTSDeck(busy_props, image_format, image_resolution, page_cards, copies_list);
+      const [deck_json, deck_images] = makeTTSDeck(busy_props, image_format, image_resolution, cards, copies_list);
       if (busy_props.cancelled) return;
       const saved_object = TTSJson.makeSavedObjectJSON([deck_json], member.getName());
 
@@ -240,7 +247,7 @@ function run() {
         ImageUtils.write(deck_image, image_file, image_format, -1, false, image_resolution);
       });
 
-      let back_image = makeCardImageUncached(page_cards[0], image_resolution, true);
+      let back_image = cards[0].makeImageUncached(image_resolution, true);
       const back_image_file = getImageFile(member, image_format, "back");
       ImageUtils.write(back_image, back_image_file, image_format, -1, false, image_resolution);
 
