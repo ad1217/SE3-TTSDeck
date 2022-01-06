@@ -7,7 +7,6 @@ This plugin for [Strange Eons 3](https://strangeeons.cgjennings.ca/index.html) a
 - Creates correctly sized deck images for Tabletop Simulator, splitting into multiple pages when necessary.
 - Supports multiple copies of cards, without duplicating them in the image.
 - Creates a "Saved Object" JSON that joins all of the pages into a single deck, and assigns the name of the card.
-- Includes a hack for Arkham Horror: The Card Game to include XP values in the names of cards.
 
 ## Installation
 
