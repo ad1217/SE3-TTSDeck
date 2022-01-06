@@ -10,4 +10,4 @@ catalog-homepage = https://github.com/ad1217/SE3-TTSDeck
 catalog-description = This plugin for allows you to generate images and \
     corresponding "Saved Object" JSONs for decks which can be used in Tabletop Simulator.
 
-res://ttsdeck/TTSDeck.js
+res://ttsdeck/plugin.js
