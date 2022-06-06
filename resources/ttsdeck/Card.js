@@ -75,9 +75,9 @@ Card.prototype.makeJSON = function makeJSON(card_id, description) {
       scaleY: 1.0,
       scaleZ: 1.0,
     },
-    Nickname: String(this.component.getName()),
+    Nickname: this.component.getName(),
     CardID: card_id,
-    Description: String(description || ""),
+    Description: description || "",
     ColorDiffuse: {
       r: 0.713235259,
       g: 0.713235259,

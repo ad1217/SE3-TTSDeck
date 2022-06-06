@@ -2,7 +2,7 @@
 
 exports.makeSavedObjectJSON = function makeSavedObjectJSON(objects, save_name) {
   return {
-    SaveName: String(save_name || ""),
+    SaveName: save_name || "",
     GameMode: "",
     Date: "",
     Table: "",

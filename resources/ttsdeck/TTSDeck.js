@@ -139,8 +139,8 @@ TTSDeck.prototype.makeJSON = function makeJSON(nickname, description) {
       scaleY: 1.0,
       scaleZ: 1.0,
     },
-    Nickname: String(nickname || ""),
-    Description: String(description || ""),
+    Nickname: nickname || "",
+    Description: description || "",
     ColorDiffuse: {
       r: 0.713239133,
       g: 0.713239133,
@@ -154,8 +154,8 @@ TTSDeck.prototype.makeJSON = function makeJSON(nickname, description) {
       .reduce((acc, val) => acc.concat(val), []),
     CustomDeck: this.pages.reduce((acc, page, index) => {
       acc[String(index + 1)] = {
-        FaceURL: String(page.face_url),
-        BackURL: String(page.back_url),
+        FaceURL: page.face_url,
+        BackURL: page.back_url,
         NumWidth: page.columns,
         NumHeight: page.rows,
         BackIsHidden: true,
