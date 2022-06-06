@@ -1,7 +1,8 @@
 useLibrary("project");
 
-function Card(member, copies_list) {
+function Card(member, arkhamdb_cycle_prefix, copies_list) {
   this.member = member;
+  this.arkhamdb_cycle_prefix = arkhamdb_cycle_prefix;
   this.copies_list = copies_list;
 
   this.component = ResourceKit.getGameComponentFromFile(member.file);
@@ -62,7 +63,7 @@ Card.prototype.copyCount = function copyCount() {
 };
 
 Card.prototype.makeJSON = function makeJSON(card_id, description) {
-  return {
+  let card = {
     Name: "Card",
     Transform: {
       posX: 0,
@@ -91,6 +92,20 @@ Card.prototype.makeJSON = function makeJSON(card_id, description) {
     Tooltip: true,
     SidewaysCard: false,
   };
+
+  // TODO: could also do other fields, like "uses"
+  // Hack for AHLCG SCED deckbuilder
+  if (this.arkhamdb_cycle_prefix) {
+    let arkhamdb_id =
+      this.arkhamdb_cycle_prefix +
+      String(this.component.settings.get("CollectionNumber")).padStart(3, "0");
+
+    card.GMNotes = JSON.stringify({
+      id: arkhamdb_id,
+    });
+  }
+
+  return card;
 };
 
 module.exports = Card;

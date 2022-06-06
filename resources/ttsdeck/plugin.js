@@ -95,6 +95,9 @@ function run() {
       task_settings.set("tts_image_resolution", image_resolution);
       deck_task.writeTaskSettings();
 
+      // If used with arkhamdb, get cycle prefix from settings
+      const arkhamdb_cycle_prefix = task_settings.get("arkhamdb_cycle_prefix");
+
       Eons.setWaitCursor(true);
       try {
         Thread.busyWindow(
@@ -103,6 +106,7 @@ function run() {
               busy_props,
               image_format,
               image_resolution,
+              arkhamdb_cycle_prefix,
               deck_task
             ),
           "Setting up...",
@@ -118,6 +122,7 @@ function run() {
       busy_props,
       image_format,
       image_resolution,
+      arkhamdb_cycle_prefix,
       member
     ) {
       let copies_list;
@@ -135,7 +140,7 @@ function run() {
       const cards = children
         .map((child) => {
           if (ProjectUtilities.matchExtension(child, "eon")) {
-            let card = new Card(child, copies_list);
+            let card = new Card(child, arkhamdb_cycle_prefix, copies_list);
             if (card.component.isDeckLayoutSupported()) {
               return card;
             }
