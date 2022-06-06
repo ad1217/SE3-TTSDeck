@@ -12,9 +12,9 @@ useLibrary("uilayout");
 useLibrary("uicontrols");
 importClass(arkham.project.CopiesList);
 
-const Card = require("./Card.js");
-const { TTSDeck } = require("./TTSDeck.js");
-const TTSJson = require("./TTSJson.js");
+const Card = require("ttsdeck/Card.js");
+const { TTSDeck } = require("ttsdeck/TTSDeck.js");
+const TTSJson = require("ttsdeck/TTSJson.js");
 
 const getName = () => "TTSDeck";
 const getDescription = () => "Generates a TTS deck image and JSON file";

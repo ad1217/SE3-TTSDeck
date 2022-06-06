@@ -1,6 +1,6 @@
 useLibrary("threads");
 
-const Card = require("./Card.js");
+const Card = require("ttsdeck/Card.js");
 
 const TTS_CARDS_PER_IMAGE = 69;
 const TTS_MAX_ROWS = 7;
