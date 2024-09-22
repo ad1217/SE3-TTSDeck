@@ -100,9 +100,16 @@ Card.prototype.makeJSON = function makeJSON(card_id, description) {
       this.arkhamdb_cycle_prefix +
       String(this.component.settings.get("CollectionNumber")).padStart(3, "0");
 
-    card.GMNotes = JSON.stringify({
-      id: arkhamdb_id,
-    });
+    let overrides = {};
+    try {
+      const comments_json = JSON.parse(this.component.comment);
+      if ("tts_gmnotes_override" in comments_json) {
+        overrides = comments_json["tts_gmnotes_override"];
+      }
+    } catch (e) {}
+
+    let gmnotes = Object.assign({ id: arkhamdb_id }, overrides);
+    card.GMNotes = JSON.stringify(gmnotes);
   }
 
   return card;
