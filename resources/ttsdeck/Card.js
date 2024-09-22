@@ -15,10 +15,7 @@ Card.getImageFile = function getImageFile(parent, format, page_num) {
   );
 };
 
-Card.prototype.makeImageUncached = function makeImageUncached(
-  resolution,
-  back
-) {
+Card.prototype.makeImageUncached = function makeImageUncached(resolution, back) {
   println("Generating image for card ", this.member);
   const sheets = this.component.createDefaultSheets();
   const card_image = sheets[back ? 1 : 0].paint(
